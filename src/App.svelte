@@ -479,17 +479,29 @@
           aria-label={isCapturing ? 'Stop capture' : 'Start capture'}
         >
           <span class="btn-capture__ring"></span>
-          <span class="btn-capture__icon">{isCapturing ? '■' : '●'}</span>
+          <span class="btn-capture__icon" style="display:flex;align-items:center;">
+            {#if isCapturing}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+            {:else}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+            {/if}
+          </span>
           <span class="btn-capture__label">{isCapturing ? 'Stop' : 'Start'}</span>
         </button>
 
         <div class="btn-group">
           <button id="btn-export" class="btn btn--outline" onclick={(e) => { ripple(e); exportCSV(); }}
             disabled={gyroLogCount === 0 && accelLogCount === 0}>
-            <span>⬇</span> Export .wag
+            <span style="display:flex;align-items:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </span>
+            Export
           </button>
           <button id="btn-clear" class="btn btn--ghost" onclick={(e) => { ripple(e); clearAll(); }}>
-            <span>🗑</span> Clear
+            <span style="display:flex;align-items:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </span>
+            Clear
           </button>
         </div>
 
@@ -575,11 +587,11 @@
           <h3 class="log-panel__title">Gyroscope Log</h3>
           <span class="log-panel__count">{gyroLogCount} entries</span>
         </div>
-        <div class="log-panel__body" bind:this={gyroRef}>
+        <div class="log-table-wrap" bind:this={gyroRef}>
           {#if gyroLogPreview.length === 0}
-            <div class="log-panel__empty">No data captured. Press Start.</div>
+            <div class="log-empty">No data captured. Press Start.</div>
           {:else}
-            <table>
+            <table class="log-table">
               <thead>
                 <tr>
                   <th>Timestamp</th>
@@ -609,11 +621,11 @@
           <h3 class="log-panel__title">Accelerometer Log</h3>
           <span class="log-panel__count">{accelLogCount} entries</span>
         </div>
-        <div class="log-panel__body" bind:this={accelRef}>
+        <div class="log-table-wrap" bind:this={accelRef}>
           {#if accelLogPreview.length === 0}
-            <div class="log-panel__empty">No data captured. Press Start.</div>
+            <div class="log-empty">No data captured. Press Start.</div>
           {:else}
-            <table>
+            <table class="log-table">
               <thead>
                 <tr>
                   <th>Timestamp</th>
