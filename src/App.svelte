@@ -458,11 +458,12 @@
     </section>
 
     <!-- ── Controls ──────────────────────────── -->
-    <section class="controls" use:reveal>
+    <section class="controls card" use:reveal>
       {#if !permGranted}
         <button
           id="btn-permission"
           class="btn btn--primary"
+          style="width: 100%;"
           disabled={permPending}
           onclick={(e) => { ripple(e); requestPermission(); }}
         >
@@ -470,39 +471,41 @@
           {permPending ? 'Requesting…' : 'Enable Sensors'}
         </button>
       {:else}
-        <!-- Modern pill start/stop button -->
-        <button
-          id="btn-toggle"
-          class="btn-capture"
-          class:is-recording={isCapturing}
-          onclick={(e) => { ripple(e); toggleCapture(); }}
-          aria-label={isCapturing ? 'Stop capture' : 'Start capture'}
-        >
-          <span class="btn-capture__ring"></span>
-          <span class="btn-capture__icon" style="display:flex;align-items:center;">
-            {#if isCapturing}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
-            {:else}
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
-            {/if}
-          </span>
-          <span class="btn-capture__label">{isCapturing ? 'Stop' : 'Start'}</span>
-        </button>
+        <div class="controls-row">
+          <!-- Modern pill start/stop button -->
+          <button
+            id="btn-toggle"
+            class="btn-capture"
+            class:is-recording={isCapturing}
+            onclick={(e) => { ripple(e); toggleCapture(); }}
+            aria-label={isCapturing ? 'Stop capture' : 'Start capture'}
+          >
+            <span class="btn-capture__ring"></span>
+            <span class="btn-capture__icon" style="display:flex;align-items:center;">
+              {#if isCapturing}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+              {:else}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>
+              {/if}
+            </span>
+            <span class="btn-capture__label">{isCapturing ? 'Stop' : 'Start'}</span>
+          </button>
 
-        <div class="btn-group">
-          <button id="btn-export" class="btn btn--outline" onclick={(e) => { ripple(e); exportCSV(); }}
-            disabled={gyroLogCount === 0 && accelLogCount === 0}>
-            <span style="display:flex;align-items:center;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            </span>
-            Export
-          </button>
-          <button id="btn-clear" class="btn btn--ghost" onclick={(e) => { ripple(e); clearAll(); }}>
-            <span style="display:flex;align-items:center;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            </span>
-            Clear
-          </button>
+          <div class="btn-group">
+            <button id="btn-export" class="btn btn--outline" onclick={(e) => { ripple(e); exportCSV(); }}
+              disabled={gyroLogCount === 0 && accelLogCount === 0}>
+              <span style="display:flex;align-items:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              </span>
+              Export
+            </button>
+            <button id="btn-clear" class="btn btn--ghost" onclick={(e) => { ripple(e); clearAll(); }}>
+              <span style="display:flex;align-items:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </span>
+              Clear
+            </button>
+          </div>
         </div>
 
         {#if sessionStartTime}
@@ -938,17 +941,36 @@
   .abs-value { font-size: 14px; font-weight: 600; }
 
   /* ── Controls layout ─────────────────────── */
-  .controls {
+  .controls.card {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border-subtle);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+  }
+
+  .controls-row {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
     align-items: center;
+    justify-content: center;
+    width: 100%;
   }
 
   .btn-group {
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 12px;
+    flex: 1;
+    min-width: 240px;
+  }
+
+  .btn-group .btn {
+    flex: 1;
   }
 
   /* ── Generic Button ── */
@@ -1004,6 +1026,8 @@
 
   /* ── Hero Capture Button ─────────────────── */
   .btn-capture {
+    flex: 1;
+    min-width: 140px;
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -1074,8 +1098,6 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
-
-  .btn-group .btn { flex: 1; }
 
   /* Session Times */
   .session-times {
