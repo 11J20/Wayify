@@ -268,7 +268,7 @@
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `wayify_${formatTs().replace(/[\s:]/g, '')}.csv`;
+    a.download = `wayify_${formatTs().replace(/[\s:]/g, '')}.wag`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -486,7 +486,7 @@
         <div class="btn-group">
           <button id="btn-export" class="btn btn--outline" onclick={(e) => { ripple(e); exportCSV(); }}
             disabled={gyroLogCount === 0 && accelLogCount === 0}>
-            <span>⬇</span> Export CSV
+            <span>⬇</span> Export .wag
           </button>
           <button id="btn-clear" class="btn btn--ghost" onclick={(e) => { ripple(e); clearAll(); }}>
             <span>🗑</span> Clear

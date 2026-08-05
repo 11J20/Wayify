@@ -112,7 +112,7 @@
     <div class="hero__actions">
       <input
         type="file"
-        accept=".csv,text/csv,text/plain,application/csv,application/vnd.ms-excel,application/octet-stream"
+        accept=".wag,.csv,text/csv,text/plain,application/csv,application/octet-stream"
         bind:this={fileInput}
         onchange={handleFileSelect}
         style="display: none;"
@@ -125,7 +125,7 @@
             <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
         </span>
-        Select CSV File
+        Select .wag File
       </button>
       {#if fileName}
         <span class="file-name">{fileName}</span>
@@ -204,7 +204,7 @@
           <path d="M13 13h5"></path>
         </svg>
       </div>
-      <p>Load a .csv file exported from Wayify to view its data.</p>
+      <p>Load a .wag file exported from Wayify to view its data.</p>
     </div>
   {/if}
 </main>
