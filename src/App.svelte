@@ -107,11 +107,18 @@
     accelLive.abs = rawAccelLive.abs;
     accelSource = rawAccelSource;
 
-    // 2. Sync buffers (slice creates a fresh array reference for Svelte)
+    // 2. Push points to the graph buffers at exactly 10 FPS so both graphs scroll at identical speeds
+    rawGyroBuf.push({ x: rawGyroLive.x, y: rawGyroLive.y, z: rawGyroLive.z });
+    if (rawGyroBuf.length > 100) rawGyroBuf.shift();
+
+    rawAccelBuf.push({ x: rawAccelLive.x, y: rawAccelLive.y, z: rawAccelLive.z, abs: rawAccelLive.abs });
+    if (rawAccelBuf.length > 100) rawAccelBuf.shift();
+
+    // 3. Sync Svelte UI graph state
     gyroBuf = rawGyroBuf.slice();
     accelBuf = rawAccelBuf.slice();
 
-    // 3. Sync UI log counts
+    // 4. Sync UI log counts
     gyroLogCount = fullGyroLog.length;
     accelLogCount = fullAccelLog.length;
 
@@ -141,9 +148,6 @@
     rawGyroLive.y = y;
     rawGyroLive.z = z;
 
-    rawGyroBuf.push({ x, y, z });
-    if (rawGyroBuf.length > 120) rawGyroBuf.shift();
-
     if (isCapturing) {
       fullGyroLog.push({ ts: formatTs(), x, y, z });
     }
@@ -164,9 +168,6 @@
     rawAccelLive.y = y;
     rawAccelLive.z = z;
     rawAccelLive.abs = abs;
-
-    rawAccelBuf.push({ x, y, z, abs });
-    if (rawAccelBuf.length > 120) rawAccelBuf.shift();
 
     if (isCapturing) {
       fullAccelLog.push({ ts: formatTs(), x, y, z, abs });
