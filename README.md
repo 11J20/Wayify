@@ -1,47 +1,46 @@
-# Svelte + TS + Vite
+# Wayify – Mobile Sensor Data Logger
 
-This template should help get you started developing with Svelte and TypeScript in Vite.
+Wayify is a high-performance web application designed for mobile devices to capture raw Gyroscope and Accelerometer data at maximum hardware frequencies, visualize it in real-time, and export it for post-session analysis.
 
-## Recommended IDE Setup
+Built with Svelte, it utilizes an optimized, throttled Reactivity loop to maintain a perfectly smooth 60fps UI while capturing hundreds of data points per second in the background without draining your device's CPU.
 
-[VS Code](https://code.visualstudio.com/) + [Svelte](https://marketplace.visualstudio.com/items?itemName=svelte.svelte-vscode).
+## Key Features
 
-## Need an official Svelte framework?
+- **Live Hardware Telemetry**: Read exact XYZ coordinates of Gyroscope (orientation) and Accelerometer (motion including gravity) hardware sensors.
+- **Throttled Live Graphs**: Real-time canvas charts synchronized perfectly at 10 frames per second for smooth, readable visualizations.
+- **Memory-safe Logging**: Appends raw data directly to JS Arrays outside Svelte's reactivity engine, allowing for hours of uninterrupted logging.
+- **Export to `.wag`**: Export your captured sessions to the proprietary `.wag` (Wayify Acceleration Gyroscope) format, complete with strict timestamp metadata.
+- **VectroScope Analyzer**: A built-in secondary tool to upload and parse `.wag` files for post-session scrubbing and data analysis.
 
-Check out [SvelteKit](https://github.com/sveltejs/kit#readme), which is also powered by Vite. Deploy anywhere with its serverless-first approach and adapt to various platforms, with out of the box support for TypeScript, SCSS, and Less, and easily-added support for mdsvex, GraphQL, PostCSS, Tailwind CSS, and more.
+## Usage Instructions
 
-## Technical considerations
+### 1. Recording Data
+1. Open the application on a mobile device (requires a physical gyroscope/accelerometer).
+2. Tap **"Enable Sensors"**. Your browser may ask for permission to access motion and orientation data—tap **Allow**.
+3. The live dashboard will immediately display real-time readouts and scrolling line charts of your phone's physical movements.
+4. Tap the **"Start"** button to begin actively recording a session to memory. The button will pulse red indicating a live session.
+5. Tap **"Stop"** when you are finished recording.
+6. Tap **"Export"** to download your session data as a `.wag` file directly to your phone's storage.
 
-**Why use this over SvelteKit?**
+### 2. Analyzing Data (VectroScope)
+1. Use the top navigation bar to switch from the "Telemetry" page to the **"VectroScope"** page.
+2. Tap the upload area (or the "Upload .wag File" button).
+3. Select the `.wag` file you just downloaded from the Wayify exporter.
+4. The VectroScope will parse the file, extract the true Start/End timestamps, and render the complete history of both the Gyroscope and Accelerometer data.
+5. Use the graph interface to scrub through and analyze your session in high detail.
 
-- It brings its own routing solution which might not be preferable for some users.
-- It is first and foremost a framework that just happens to use Vite under the hood, not a Vite app.
+## Development
 
-This template contains as little as possible to get started with Vite + TypeScript + Svelte, while taking into account the developer experience with regards to HMR and intellisense. It demonstrates capabilities on par with the other `create-vite` templates and is a good starting point for beginners dipping their toes into a Vite + Svelte project.
+To run the project locally:
 
-Should you later need the extended capabilities and extensibility provided by SvelteKit, the template has been structured similarly to SvelteKit so that it is easy to migrate.
+```bash
+# Install dependencies
+npm install
 
-**Why `global.d.ts` instead of `compilerOptions.types` inside `jsconfig.json` or `tsconfig.json`?**
-
-Setting `compilerOptions.types` shuts out all other types not explicitly listed in the configuration. Using triple-slash references keeps the default TypeScript setting of accepting type information from the entire workspace, while also adding `svelte` and `vite/client` type information.
-
-**Why include `.vscode/extensions.json`?**
-
-Other templates indirectly recommend extensions via the README, but this file allows VS Code to prompt the user to install the recommended extension upon opening the project.
-
-**Why enable `allowJs` in the TS template?**
-
-While `allowJs: false` would indeed prevent the use of `.js` files in the project, it does not prevent the use of JavaScript syntax in `.svelte` files. In addition, it would force `checkJs: false`, bringing the worst of both worlds: not being able to guarantee the entire codebase is TypeScript, and also having worse typechecking for the existing JavaScript. In addition, there are valid use cases in which a mixed codebase may be relevant.
-
-**Why is HMR not preserving my local component state?**
-
-HMR state preservation comes with a number of gotchas! It has been disabled by default in both `svelte-hmr` and `@sveltejs/vite-plugin-svelte` due to its often surprising behavior. You can read the details [here](https://github.com/rixo/svelte-hmr#svelte-hmr).
-
-If you have state that's important to retain within a component, consider creating an external store which would not be replaced by HMR.
-
-```ts
-// store.ts
-// An extremely simple external store
-import { writable } from 'svelte/store'
-export default writable(0)
+# Start the Vite development server
+npm run dev
 ```
+
+### Architecture Notes
+- The UI relies heavily on a decoupled `requestAnimationFrame` (`tick`) loop in Svelte to prevent massive DOM thrashing. 
+- The raw data is appended by hardware interrupts (`onGyro`, `onAccel`) at ~100Hz, while the Svelte `$state` and DOM updates are strictly capped at 4-10Hz.
