@@ -951,18 +951,20 @@
     flex-wrap: wrap;
   }
 
-  /* ── Primary pill button (Enable Sensors) ── */
+  /* ── Generic Button ── */
   .btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 7px;
-    padding: 10px 22px;
+    padding: 0 20px;
+    height: 42px;
     border-radius: var(--radius-pill);
     font-family: var(--font-family);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    border: 1.5px solid transparent;
+    border: 1px solid transparent;
     transition: all var(--transition-normal);
     white-space: nowrap;
     position: relative;
@@ -972,70 +974,73 @@
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .btn--primary {
-    background: linear-gradient(135deg, var(--color-brand-primary), var(--color-brand-secondary));
+    background: var(--color-brand-primary);
     color: #fff;
-    box-shadow: 0 4px 18px rgba(0,160,175,0.35);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   }
   .btn--primary:hover:not(:disabled) {
-    box-shadow: 0 6px 24px rgba(0,160,175,0.50);
-    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    background: var(--color-brand-secondary);
   }
 
   .btn--outline {
-    background: transparent;
-    border-color: var(--color-brand-primary);
-    color: var(--color-brand-primary);
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
   }
   .btn--outline:hover:not(:disabled) {
-    background: rgba(0,160,175,0.07);
-    transform: translateY(-1px);
+    background: var(--color-bg);
   }
 
   .btn--ghost {
     background: transparent;
     color: var(--color-text-secondary);
-    border-color: var(--color-border);
+    border-color: transparent;
   }
-  .btn--ghost:hover { background: var(--color-border-subtle); }
+  .btn--ghost:hover:not(:disabled) { 
+    background: rgba(128,128,128,0.1); 
+  }
 
   /* ── Hero Capture Button ─────────────────── */
   .btn-capture {
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    padding: 14px 32px 14px 24px;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 24px;
+    height: 42px;
     border-radius: var(--radius-pill);
     font-family: var(--font-family);
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
     border: none;
     outline: none;
-    overflow: hidden;
-    background: linear-gradient(135deg, #006272 0%, #00a0af 60%, #00c8d7 100%);
-    color: #fff;
-    box-shadow: 0 6px 28px rgba(0,160,175,0.40), 0 2px 8px rgba(0,0,0,0.15);
-    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+    background: var(--color-brand-primary);
+    color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: all var(--transition-normal);
     user-select: none;
     -webkit-tap-highlight-color: transparent;
   }
 
   .btn-capture:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 10px 36px rgba(0,160,175,0.52), 0 4px 12px rgba(0,0,0,0.20);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
   }
 
-  .btn-capture:active { animation: btn-tap 0.2s ease forwards; }
+  .btn-capture:active { 
+    transform: scale(0.97); 
+  }
 
-  /* Recording state: red gradient */
+  /* Recording state: Apple matte red */
   .btn-capture.is-recording {
-    background: linear-gradient(135deg, #b71c1c 0%, #e53935 55%, #ff5252 100%);
-    box-shadow: 0 6px 28px rgba(229,57,53,0.45), 0 2px 8px rgba(0,0,0,0.20);
+    background: #ff3b30; 
+    box-shadow: 0 1px 3px rgba(255,59,48,0.2);
   }
   .btn-capture.is-recording:hover {
-    box-shadow: 0 10px 36px rgba(229,57,53,0.60), 0 4px 12px rgba(0,0,0,0.25);
+    box-shadow: 0 3px 8px rgba(255,59,48,0.3);
   }
 
   /* Animated pulse ring on record */
