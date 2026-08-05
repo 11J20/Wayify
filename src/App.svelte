@@ -273,7 +273,7 @@
     ];
 
     const csv  = BOM + lines.join('\n');
-    const blob = new Blob([csv], { type: 'application/octet-stream' });
+    const blob = new Blob([csv], { type: 'application/x-wayify' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
