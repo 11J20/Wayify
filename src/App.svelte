@@ -86,9 +86,15 @@
 
   // ── RAF Throttle Loop ─────────────────────────────────────────────
   let rafId: number;
-  let lastScrollCheck = 0;
+  let lastFrame = 0;
+  let lastTableUpdate = 0;
 
-  function tick() {
+  function tick(now: number) {
+    rafId = requestAnimationFrame(tick);
+
+    if (now - lastFrame < 33) return; // Cap at 30fps for graphs/live-readouts
+    lastFrame = now;
+
     // 1. Sync live readouts
     gyroLive.x = rawGyroLive.x;
     gyroLive.y = rawGyroLive.y;
@@ -104,23 +110,24 @@
     gyroBuf = rawGyroBuf.slice();
     accelBuf = rawAccelBuf.slice();
 
-    // 3. Sync UI log previews & counts
+    // 3. Sync UI log counts
     gyroLogCount = fullGyroLog.length;
     accelLogCount = fullAccelLog.length;
 
     if (isCapturing) {
-      gyroLogPreview = fullGyroLog.slice(-200);
-      accelLogPreview = fullAccelLog.slice(-200);
-      
-      const now = performance.now();
-      if (now - lastScrollCheck > 250) { // Throttle DOM scroll
-        scrollBottom(gyroRef);
-        scrollBottom(accelRef);
-        lastScrollCheck = now;
+      if (now - lastTableUpdate > 250) { // Throttle heavy DOM updates to 4fps
+        gyroLogPreview = fullGyroLog.slice(-200);
+        accelLogPreview = fullAccelLog.slice(-200);
+        
+        // Wait a microtask for DOM to update the table before scrolling
+        Promise.resolve().then(() => {
+          scrollBottom(gyroRef);
+          scrollBottom(accelRef);
+        });
+        
+        lastTableUpdate = now;
       }
     }
-
-    rafId = requestAnimationFrame(tick);
   }
 
   // ── Sensor handlers (Raw Array Mutations) ─────────────────────────
@@ -492,18 +499,18 @@
           </button>
 
           <div class="btn-group">
+            <button id="btn-clear" class="btn btn--ghost" onclick={(e) => { ripple(e); clearAll(); }}>
+              <span style="display:flex;align-items:center;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </span>
+              Clear
+            </button>
             <button id="btn-export" class="btn btn--outline" onclick={(e) => { ripple(e); exportCSV(); }}
               disabled={gyroLogCount === 0 && accelLogCount === 0}>
               <span style="display:flex;align-items:center;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
               </span>
               Export
-            </button>
-            <button id="btn-clear" class="btn btn--ghost" onclick={(e) => { ripple(e); clearAll(); }}>
-              <span style="display:flex;align-items:center;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              </span>
-              Clear
             </button>
           </div>
         </div>
