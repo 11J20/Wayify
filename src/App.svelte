@@ -3,19 +3,20 @@
 
   // ── Types ─────────────────────────────────────────────────────────
   interface SensorEntry {
-    ts: string;   // DDMMYYYY - HH:MM
-    x:  number;
-    y:  number;
-    z:  number;
-    abs?: number; // only for accelerometer
+    ts:  string;   // DDMMYYYY - HH:MM
+    x:   number;
+    y:   number;
+    z:   number | null;  // null when device has no magnetometer (alpha)
+    abs?: number;
   }
 
   // ── State ─────────────────────────────────────────────────────────
   let gyroLog:  SensorEntry[] = $state([]);
   let accelLog: SensorEntry[] = $state([]);
 
-  let gyroLive  = $state({ x: 0, y: 0, z: 0 });
+  let gyroLive  = $state<{ x: number; y: number; z: number | null }>({ x: 0, y: 0, z: null });
   let accelLive = $state({ x: 0, y: 0, z: 0, abs: 0 });
+  let accelSource = $state<'gravity' | 'linear' | 'none'>('none');
 
   let isCapturing  = $state(false);
   let permGranted  = $state(false);
@@ -45,36 +46,46 @@
 
   // ── Sensor handlers ───────────────────────────────────────────────
   function onGyro(e: DeviceOrientationEvent) {
+    // beta  = X (front/back tilt, -180..180 deg)
+    // gamma = Y (left/right tilt,  -90..90 deg)
+    // alpha = Z (compass heading,   0..360 deg) — null if magnetometer absent
     gyroLive = {
       x: e.beta  ?? 0,
       y: e.gamma ?? 0,
-      z: e.alpha ?? 0,
+      z: e.alpha,          // keep as null when device has no compass
     };
     if (isCapturing) {
       gyroLog = [...gyroLog, {
         ts: formatTs(),
-        x: gyroLive.x,
-        y: gyroLive.y,
-        z: gyroLive.z,
+        x:  e.beta  ?? 0,
+        y:  e.gamma ?? 0,
+        z:  e.alpha,       // null is preserved so CSV shows blank, not 0
       }];
-      // keep latest 200 entries
       if (gyroLog.length > 200) gyroLog = gyroLog.slice(-200);
       scrollBottom(gyroRef);
     }
   }
 
   function onAccel(e: DeviceMotionEvent) {
-    const a = e.acceleration ?? e.accelerationIncludingGravity;
-    const x = a?.x ?? 0;
-    const y = a?.y ?? 0;
-    const z = a?.z ?? 0;
+    // Prefer accelerationIncludingGravity — it is available on virtually all
+    // Android/iOS devices even when the gravity-subtracted channel is null.
+    const aG  = e.accelerationIncludingGravity;
+    const aL  = e.acceleration;
+
+    // Pick best available source, prefer linear (gravity-subtracted) if non-null
+    const useLinear = aL !== null && (aL?.x !== null || aL?.y !== null || aL?.z !== null);
+    const src = useLinear ? aL : aG;
+
+    const x   = src?.x ?? 0;
+    const y   = src?.y ?? 0;
+    const z   = src?.z ?? 0;
     const abs = Math.sqrt(x*x + y*y + z*z);
-    accelLive = { x, y, z, abs };
+
+    accelSource = useLinear ? 'linear' : (aG ? 'gravity' : 'none');
+    accelLive   = { x, y, z, abs };
+
     if (isCapturing) {
-      accelLog = [...accelLog, {
-        ts: formatTs(),
-        x, y, z, abs,
-      }];
+      accelLog = [...accelLog, { ts: formatTs(), x, y, z, abs }];
       if (accelLog.length > 200) accelLog = accelLog.slice(-200);
       scrollBottom(accelRef);
     }
@@ -124,17 +135,41 @@
   }
 
   function exportCSV() {
-    const gyroLines  = ['Timestamp,Gyro_X(deg),Gyro_Y(deg),Gyro_Z(deg)',
-      ...gyroLog.map(r => `${r.ts},${r.x},${r.y},${r.z}`)];
-    const accelLines = ['Timestamp,Accel_X(m/s²),Accel_Y(m/s²),Accel_Z(m/s²),Abs(m/s²)',
-      ...accelLog.map(r => `${r.ts},${r.x},${r.y},${r.z},${r.abs}`)];
-    const csv = [...gyroLines, '', ...accelLines].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    // UTF-8 BOM so Excel opens without encoding issues
+    const BOM = '\uFEFF';
+
+    // Gyroscope section
+    // Z (alpha) may be null when device has no magnetometer — shown as blank
+    const gyroHeader = 'Section,Timestamp,Gyro_X_deg,Gyro_Y_deg,Gyro_Z_deg';
+    const gyroRows   = gyroLog.map(
+      r => `GYROSCOPE,${r.ts},${r.x.toFixed(4)},${r.y.toFixed(4)},${r.z !== null ? r.z.toFixed(4) : ''}`
+    );
+
+    // Accelerometer section
+    const accelHeader = 'Section,Timestamp,Accel_X_ms2,Accel_Y_ms2,Accel_Z_ms2,Abs_ms2';
+    const accelRows   = accelLog.map(
+      r => `ACCELEROMETER,${r.ts},${r.x.toFixed(4)},${r.y.toFixed(4)},${r.z.toFixed(4)},${(r.abs ?? 0).toFixed(4)}`
+    );
+
+    const lines = [
+      '=== WAYIFY SENSOR EXPORT ===',
+      '',
+      gyroHeader,
+      ...gyroRows,
+      '',
+      accelHeader,
+      ...accelRows,
+    ];
+
+    const csv  = BOM + lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `wayify_${formatTs().replace(/\s|:/g, '')}.csv`;
+    a.download = `wayify_${formatTs().replace(/[\s:]/g, '')}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
 
@@ -211,7 +246,7 @@
             </div>
             <div class="axis-item">
               <span class="axis-label z">Z</span>
-              <span class="axis-value">{fix(gyroLive.z)}</span>
+              <span class="axis-value">{gyroLive.z !== null ? fix(gyroLive.z) : 'N/A'}</span>
             </div>
           </div>
         </div>
@@ -222,7 +257,9 @@
             <span class="sensor-card__icon accel-icon">↗</span>
             <div>
               <div class="sensor-card__title">Accelerometer</div>
-              <div class="sensor-card__subtitle">Motion · m/s²</div>
+              <div class="sensor-card__subtitle">
+                {accelSource === 'linear' ? 'Linear · m/s²' : accelSource === 'gravity' ? 'incl. Gravity · m/s²' : 'Motion · m/s²'}
+              </div>
             </div>
           </div>
           <div class="axis-grid">
@@ -322,7 +359,7 @@
                     <td class="ts-cell">{row.ts}</td>
                     <td class="col-x">{fix(row.x)}</td>
                     <td class="col-y">{fix(row.y)}</td>
-                    <td class="col-z">{fix(row.z)}</td>
+                    <td class="col-z">{row.z !== null ? fix(row.z) : '—'}</td>
                   </tr>
                 {/each}
               </tbody>
