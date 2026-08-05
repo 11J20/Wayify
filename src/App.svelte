@@ -225,20 +225,32 @@
       }
     }
 
-    // ── Scroll-reveal ─────────────────────────
-    const io = new IntersectionObserver(
-      (entries) => entries.forEach(e => {
-        if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
-      }),
-      { threshold: 0.12 }
-    );
-    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
   });
 
   onDestroy(() => {
     window.removeEventListener('deviceorientation', onGyro, true);
     window.removeEventListener('devicemotion', onAccel, true);
   });
+
+  // ── Svelte Action for Scroll Reveal ───────────────────────────────
+  function reveal(node: HTMLElement) {
+    node.classList.add('reveal');
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          node.classList.add('visible');
+          io.unobserve(node);
+        }
+      });
+    }, { threshold: 0.12 });
+    io.observe(node);
+    return {
+      destroy() {
+        io.disconnect();
+      }
+    };
+  }
 </script>
 
 <!-- ── Markup ──────────────────────────────────────────────────────── -->
@@ -262,7 +274,18 @@
         aria-label="Switch page"
         title={currentPage === 'live' ? 'Go to VectroScope' : 'Go to Live Capture'}
       >
-        {currentPage === 'live' ? '🔬 VectroScope' : '⏺ Live Data'}
+        {#if currentPage === 'live'}
+          <svg style="margin-right: 6px; width:16px; height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+          VectroScope
+        {:else}
+          <svg style="margin-right: 6px; width:16px; height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="2"></circle>
+            <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path>
+          </svg>
+          Live Data
+        {/if}
       </button>
 
       <!-- Dark mode toggle -->
@@ -365,7 +388,7 @@
     </section>
 
     <!-- ── Controls ──────────────────────────── -->
-    <section class="controls reveal">
+    <section class="controls" use:reveal>
       {#if !permGranted}
         <button
           id="btn-permission"
@@ -404,18 +427,18 @@
 
     <!-- Error banner -->
     {#if errorMsg}
-      <div class="error-banner reveal" role="alert">⚠ {errorMsg}</div>
+      <div class="error-banner" use:reveal role="alert">⚠ {errorMsg}</div>
     {/if}
 
     <!-- Sensor not supported notice -->
     {#if !sensorSupported}
-      <div class="info-banner reveal">
+      <div class="info-banner" use:reveal>
         ℹ  Sensors not available. Open on a mobile browser for live data.
       </div>
     {/if}
 
     <!-- ── Live Charts ─────────────────────────── -->
-    <section class="charts-section reveal">
+    <section class="charts-section" use:reveal>
       <h2 class="section__title">Live Graphs</h2>
       <div class="chart-row">
 
@@ -459,12 +482,10 @@
       </div>
     </section>
 
-    <!-- ── Log Tables ─────────────────────────── -->
-    <div class="log-row reveal">
-
-
+    <!-- ── Logs ────────────────────────────────── -->
+    <div class="log-row">
       <!-- Gyroscope log -->
-      <section class="log-panel">
+      <section class="log-panel" use:reveal>
         <div class="log-panel__head">
           <h3 class="log-panel__title">Gyroscope Log</h3>
           <span class="log-panel__count">{gyroLog.length} entries</span>
@@ -498,7 +519,7 @@
       </section>
 
       <!-- Accelerometer log -->
-      <section class="log-panel">
+      <section class="log-panel" use:reveal>
         <div class="log-panel__head">
           <h3 class="log-panel__title">Accelerometer Log</h3>
           <span class="log-panel__count">{accelLog.length} entries</span>
