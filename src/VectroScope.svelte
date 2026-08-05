@@ -89,19 +89,25 @@
 
 <main class="page reveal visible">
   <div class="hero">
-    <h1 class="hero__title">Telemetry Inspector</h1>
+    <h1 class="hero__title">VectroScope</h1>
     <p class="hero__subtitle">Import and analyze exported Wayify sensor sessions</p>
 
     <div class="hero__actions">
       <input
         type="file"
-        accept=".csv"
+        accept=".csv,text/csv,text/plain,application/csv,application/vnd.ms-excel,application/octet-stream"
         bind:this={fileInput}
         onchange={handleFileSelect}
         style="display: none;"
       />
       <button class="btn btn--primary btn-upload" onclick={triggerFileInput}>
-        <span class="btn__icon">📁</span>
+        <span class="btn__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+        </span>
         Select CSV File
       </button>
       {#if fileName}
@@ -157,7 +163,15 @@
     </section>
   {:else if !fileName && !errorMsg}
     <div class="empty-state reveal visible">
-      <div class="empty-icon">📊</div>
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="3" y1="9" x2="21" y2="9"></line>
+          <line x1="9" y1="21" x2="9" y2="9"></line>
+          <path d="M13 17l2-2 3 3"></path>
+          <path d="M13 13h5"></path>
+        </svg>
+      </div>
       <p>Load a .csv file exported from Wayify to view its data.</p>
     </div>
   {/if}
@@ -196,7 +210,22 @@
     flex-wrap: wrap;
   }
 
+  .btn__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+  }
+  .btn__icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
   .btn-upload {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     padding: 12px 28px;
     font-size: 15px;
     border-radius: var(--radius-pill);
@@ -231,9 +260,15 @@
   }
 
   .empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    opacity: 0.5;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    color: var(--color-brand-primary);
+    opacity: 0.6;
+  }
+  .empty-icon svg {
+    width: 100%;
+    height: 100%;
   }
 
   .scope-wrap-container {
