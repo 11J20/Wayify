@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import LiveChart from './lib/LiveChart.svelte';
   import type { ChartPoint } from './lib/LiveChart.svelte';
+  import VectroScope from './VectroScope.svelte';
 
   // ── Types ─────────────────────────────────────────────────────────
   interface SensorEntry {
@@ -13,6 +14,8 @@
   }
 
   // ── State ─────────────────────────────────────────────────────────
+  let currentPage = $state<'live' | 'vectroscope'>('live');
+
   let gyroLog:  SensorEntry[] = $state([]);
   let accelLog: SensorEntry[] = $state([]);
 
@@ -252,6 +255,16 @@
       <span class="topbar__name">Wayify</span>
     </div>
     <div class="topbar__right">
+      <!-- Nav toggle -->
+      <button
+        class="nav-toggle"
+        onclick={(e) => { ripple(e); currentPage = currentPage === 'live' ? 'vectroscope' : 'live'; }}
+        aria-label="Switch page"
+        title={currentPage === 'live' ? 'Go to VectroScope' : 'Go to Live Capture'}
+      >
+        {currentPage === 'live' ? '🔬 VectroScope' : '⏺ Live Data'}
+      </button>
+
       <!-- Dark mode toggle -->
       <button
         id="btn-dark"
@@ -283,8 +296,9 @@
     </div>
   </header>
 
-  <!-- Page -->
-  <main class="page">
+  {#if currentPage === 'live'}
+    <!-- Page -->
+    <main class="page">
 
     <!-- ── Sensor Live Cards ─────────────────── -->
     <section class="section">
@@ -522,6 +536,9 @@
     </div><!-- /log-row -->
 
   </main><!-- /page -->
+  {:else}
+    <VectroScope {darkMode} />
+  {/if}
 
   <!-- Footer -->
   <footer class="footer">
@@ -588,6 +605,30 @@
     display: flex;
     align-items: center;
     gap: 12px;
+  }
+
+  /* ── Nav toggle ────────────────────── */
+  .nav-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: var(--radius-pill);
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.9);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+  }
+  .nav-toggle:hover {
+    background: rgba(255,255,255,0.18);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   }
 
   /* ── Dark mode toggle ────────────────────── */
