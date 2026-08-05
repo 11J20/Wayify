@@ -33,6 +33,8 @@
   let accelLogPreview: SensorEntry[] = $state([]);
   let gyroLogCount  = $state(0);
   let accelLogCount = $state(0);
+  let sessionStartTime = $state<string | null>(null);
+  let sessionEndTime   = $state<string | null>(null);
 
   // Always-live chart buffers (synced via RAF)
   let gyroBuf:  ChartPoint[] = $state([]);
@@ -199,6 +201,14 @@
   function toggleCapture() {
     if (!permGranted) return;
     isCapturing = !isCapturing;
+    if (isCapturing) {
+      if (fullGyroLog.length === 0 && fullAccelLog.length === 0) {
+        sessionStartTime = formatTs();
+        sessionEndTime = null;
+      }
+    } else {
+      sessionEndTime = formatTs();
+    }
   }
 
   function clearAll() {
@@ -208,6 +218,8 @@
     accelLogCount = 0;
     gyroLogPreview = [];
     accelLogPreview = [];
+    sessionStartTime = null;
+    sessionEndTime = null;
   }
 
   // ── Ripple effect ───────────────────────────────────────────────
@@ -241,6 +253,8 @@
 
     const lines = [
       '=== WAYIFY SENSOR EXPORT ===',
+      `Session Start: ${sessionStartTime ?? 'N/A'}`,
+      `Session End: ${sessionEndTime ?? 'N/A'}`,
       '',
       gyroHeader,
       ...gyroRows,
@@ -478,6 +492,21 @@
             <span>🗑</span> Clear
           </button>
         </div>
+
+        {#if sessionStartTime}
+          <div class="session-times">
+            <div class="time-pill">
+              <span class="time-label">Start:</span>
+              <span class="time-val">{sessionStartTime.split(' - ')[1]}</span>
+            </div>
+            {#if sessionEndTime}
+              <div class="time-pill">
+                <span class="time-label">End:</span>
+                <span class="time-val">{sessionEndTime.split(' - ')[1]}</span>
+              </div>
+            {/if}
+          </div>
+        {/if}
       {/if}
     </section>
 
@@ -1029,7 +1058,41 @@
     text-transform: uppercase;
   }
 
-  /* ── Banners ─────────────────────────────── */
+  .btn-group .btn { flex: 1; }
+
+  /* Session Times */
+  .session-times {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .time-pill {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-subtle);
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: var(--shadow-sm);
+  }
+  .time-label {
+    color: var(--color-text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .time-val {
+    font-family: var(--font-mono);
+    color: var(--color-brand-primary);
+    font-weight: 700;
+  }
+
+  /* ── Error & Info Banners ──────────────────────────── */
   .error-banner,
   .info-banner {
     padding: 12px 16px;

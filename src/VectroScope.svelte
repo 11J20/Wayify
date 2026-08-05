@@ -15,6 +15,8 @@
   let accelData = $state<ScopePoint[]>([]);
   let errorMsg = $state<string>('');
   let dataKey = $state<number>(0); // bump to reset chart zoom
+  let parsedStartTime = $state<string | null>(null);
+  let parsedEndTime = $state<string | null>(null);
 
   // Parser
   function parseCSV(text: string) {
@@ -23,7 +25,20 @@
     const newAccel: ScopePoint[] = [];
 
     for (const line of lines) {
-      if (!line.trim() || line.startsWith('===') || line.startsWith('Section')) continue;
+      if (!line.trim() || line.startsWith('===')) continue;
+
+      if (line.startsWith('Session Start:')) {
+        const val = line.substring(14).trim();
+        if (val !== 'N/A') parsedStartTime = val;
+        continue;
+      }
+      if (line.startsWith('Session End:')) {
+        const val = line.substring(12).trim();
+        if (val !== 'N/A') parsedEndTime = val;
+        continue;
+      }
+
+      if (line.startsWith('Section')) continue;
 
       const parts = line.split(',');
       if (parts.length < 5) continue;
@@ -68,6 +83,8 @@
     errorMsg = '';
     gyroData = [];
     accelData = [];
+    parsedStartTime = null;
+    parsedEndTime = null;
 
     const reader = new FileReader();
     reader.onload = (ev) => {
@@ -114,6 +131,21 @@
         <span class="file-name">{fileName}</span>
       {/if}
     </div>
+
+    {#if parsedStartTime}
+      <div class="session-times">
+        <div class="time-pill">
+          <span class="time-label">Start:</span>
+          <span class="time-val">{parsedStartTime.includes(' - ') ? parsedStartTime.split(' - ')[1] : parsedStartTime}</span>
+        </div>
+        {#if parsedEndTime}
+          <div class="time-pill">
+            <span class="time-label">End:</span>
+            <span class="time-val">{parsedEndTime.includes(' - ') ? parsedEndTime.split(' - ')[1] : parsedEndTime}</span>
+          </div>
+        {/if}
+      </div>
+    {/if}
   </div>
 
   {#if errorMsg}
@@ -269,6 +301,38 @@
   .empty-icon svg {
     width: 100%;
     height: 100%;
+  }
+
+  /* Session Times */
+  .session-times {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .time-pill {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border-subtle);
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: var(--shadow-sm);
+  }
+  .time-label {
+    color: var(--color-text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .time-val {
+    font-family: var(--font-mono);
+    color: var(--color-brand-primary);
+    font-weight: 700;
   }
 
   .scope-wrap-container {
