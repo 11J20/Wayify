@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import LiveChart from './lib/LiveChart.svelte';
+  import type { ChartPoint } from './lib/LiveChart.svelte';
 
   // ── Types ─────────────────────────────────────────────────────────
   interface SensorEntry {
@@ -13,6 +15,10 @@
   // ── State ─────────────────────────────────────────────────────────
   let gyroLog:  SensorEntry[] = $state([]);
   let accelLog: SensorEntry[] = $state([]);
+
+  // Always-live chart buffers (not capture-gated, max 120 points)
+  let gyroBuf:  ChartPoint[] = $state([]);
+  let accelBuf: ChartPoint[] = $state([]);
 
   let gyroLive  = $state<{ x: number; y: number; z: number | null }>({ x: 0, y: 0, z: null });
   let accelLive = $state({ x: 0, y: 0, z: 0, abs: 0 });
@@ -60,20 +66,22 @@
 
   // ── Sensor handlers ───────────────────────────────────────────────
   function onGyro(e: DeviceOrientationEvent) {
-    // beta  = X (front/back tilt, -180..180 deg)
-    // gamma = Y (left/right tilt,  -90..90 deg)
-    // alpha = Z (compass heading,   0..360 deg) — null if magnetometer absent
+    // beta=X front/back, gamma=Y left/right, alpha=Z compass (null if no mag)
     gyroLive = {
       x: e.beta  ?? 0,
       y: e.gamma ?? 0,
-      z: e.alpha,          // keep as null when device has no compass
+      z: e.alpha,
     };
+    // Always update live chart buffer
+    gyroBuf = [...gyroBuf, { x: e.beta ?? 0, y: e.gamma ?? 0, z: e.alpha }];
+    if (gyroBuf.length > 120) gyroBuf = gyroBuf.slice(-120);
+
     if (isCapturing) {
       gyroLog = [...gyroLog, {
         ts: formatTs(),
         x:  e.beta  ?? 0,
         y:  e.gamma ?? 0,
-        z:  e.alpha,       // null is preserved so CSV shows blank, not 0
+        z:  e.alpha,
       }];
       if (gyroLog.length > 200) gyroLog = gyroLog.slice(-200);
       scrollBottom(gyroRef);
@@ -81,15 +89,10 @@
   }
 
   function onAccel(e: DeviceMotionEvent) {
-    // Prefer accelerationIncludingGravity — it is available on virtually all
-    // Android/iOS devices even when the gravity-subtracted channel is null.
     const aG  = e.accelerationIncludingGravity;
     const aL  = e.acceleration;
-
-    // Pick best available source, prefer linear (gravity-subtracted) if non-null
     const useLinear = aL !== null && (aL?.x !== null || aL?.y !== null || aL?.z !== null);
     const src = useLinear ? aL : aG;
-
     const x   = src?.x ?? 0;
     const y   = src?.y ?? 0;
     const z   = src?.z ?? 0;
@@ -97,6 +100,9 @@
 
     accelSource = useLinear ? 'linear' : (aG ? 'gravity' : 'none');
     accelLive   = { x, y, z, abs };
+    // Always update live chart buffer
+    accelBuf = [...accelBuf, { x, y, z, abs }];
+    if (accelBuf.length > 120) accelBuf = accelBuf.slice(-120);
 
     if (isCapturing) {
       accelLog = [...accelLog, { ts: formatTs(), x, y, z, abs }];
@@ -148,6 +154,18 @@
     accelLog = [];
   }
 
+  // ── Ripple effect ───────────────────────────────────────────────
+  function ripple(e: MouseEvent) {
+    const btn  = e.currentTarget as HTMLElement;
+    const rect = btn.getBoundingClientRect();
+    const span = document.createElement('span');
+    span.className    = 'ripple-wave';
+    span.style.left   = `${e.clientX - rect.left}px`;
+    span.style.top    = `${e.clientY - rect.top}px`;
+    btn.appendChild(span);
+    span.addEventListener('animationend', () => span.remove(), { once: true });
+  }
+
   function exportCSV() {
     // UTF-8 BOM so Excel opens without encoding issues
     const BOM = '\uFEFF';
@@ -194,17 +212,24 @@
       sensorSupported = false;
       errorMsg = 'Sensors not available on this device / browser.';
     } else {
-      // On Android / desktop no permission call needed — try attaching directly
       const DOE = DeviceOrientationEvent as unknown as {
         requestPermission?: () => Promise<string>;
       };
       if (typeof DOE.requestPermission !== 'function') {
-        // non-iOS: just attach listeners
         window.addEventListener('deviceorientation', onGyro, true);
         window.addEventListener('devicemotion', onAccel, true);
         permGranted = true;
       }
     }
+
+    // ── Scroll-reveal ─────────────────────────
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach(e => {
+        if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+      }),
+      { threshold: 0.12 }
+    );
+    document.querySelectorAll('.reveal').forEach(el => io.observe(el));
   });
 
   onDestroy(() => {
@@ -326,53 +351,103 @@
     </section>
 
     <!-- ── Controls ──────────────────────────── -->
-    <section class="controls">
+    <section class="controls reveal">
       {#if !permGranted}
         <button
           id="btn-permission"
           class="btn btn--primary"
           disabled={permPending}
-          onclick={requestPermission}
+          onclick={(e) => { ripple(e); requestPermission(); }}
         >
-          {permPending ? 'Requesting…' : '🔓  Enable Sensors'}
+          <span class="btn__icon">🔓</span>
+          {permPending ? 'Requesting…' : 'Enable Sensors'}
         </button>
       {:else}
+        <!-- Modern pill start/stop button -->
         <button
           id="btn-toggle"
-          class="btn"
-          class:btn--record={!isCapturing}
-          class:btn--stop={isCapturing}
-          onclick={toggleCapture}
+          class="btn-capture"
+          class:is-recording={isCapturing}
+          onclick={(e) => { ripple(e); toggleCapture(); }}
+          aria-label={isCapturing ? 'Stop capture' : 'Start capture'}
         >
-          {isCapturing ? '⏹  Stop Capture' : '⏺  Start Capture'}
+          <span class="btn-capture__ring"></span>
+          <span class="btn-capture__icon">{isCapturing ? '■' : '●'}</span>
+          <span class="btn-capture__label">{isCapturing ? 'Stop' : 'Start'}</span>
         </button>
-        <button id="btn-export" class="btn btn--outline" onclick={exportCSV}
-          disabled={gyroLog.length === 0 && accelLog.length === 0}>
-          ⬇  Export CSV
-        </button>
-        <button id="btn-clear" class="btn btn--ghost" onclick={clearAll}>
-          🗑  Clear
-        </button>
+
+        <div class="btn-group">
+          <button id="btn-export" class="btn btn--outline" onclick={(e) => { ripple(e); exportCSV(); }}
+            disabled={gyroLog.length === 0 && accelLog.length === 0}>
+            <span>⬇</span> Export CSV
+          </button>
+          <button id="btn-clear" class="btn btn--ghost" onclick={(e) => { ripple(e); clearAll(); }}>
+            <span>🗑</span> Clear
+          </button>
+        </div>
       {/if}
     </section>
 
     <!-- Error banner -->
     {#if errorMsg}
-      <div class="error-banner" role="alert">
-        ⚠ {errorMsg}
-      </div>
+      <div class="error-banner reveal" role="alert">⚠ {errorMsg}</div>
     {/if}
 
     <!-- Sensor not supported notice -->
     {#if !sensorSupported}
-      <div class="info-banner">
-        ℹ  This browser or device does not expose gyroscope / accelerometer APIs.
-        Try opening this page in a mobile browser.
+      <div class="info-banner reveal">
+        ℹ  Sensors not available. Open on a mobile browser for live data.
       </div>
     {/if}
 
+    <!-- ── Live Charts ─────────────────────────── -->
+    <section class="charts-section reveal">
+      <h2 class="section__title">Live Graphs</h2>
+      <div class="chart-row">
+
+        <!-- Gyroscope chart -->
+        <div class="chart-card">
+          <div class="chart-card__head">
+            <div class="chart-card__label">
+              <span class="chart-card__dot gyro-dot"></span>
+              Gyroscope · X Y Z
+            </div>
+            <div class="chart-legend">
+              <span class="leg-item x">X</span>
+              <span class="leg-item y">Y</span>
+              <span class="leg-item z">Z</span>
+            </div>
+          </div>
+          <div class="chart-canvas-wrap">
+            <LiveChart points={gyroBuf} dark={darkMode} maxPoints={100} label="Gyroscope XYZ chart" />
+          </div>
+        </div>
+
+        <!-- Accelerometer chart -->
+        <div class="chart-card">
+          <div class="chart-card__head">
+            <div class="chart-card__label">
+              <span class="chart-card__dot accel-dot"></span>
+              Accelerometer · X Y Z |A|
+            </div>
+            <div class="chart-legend">
+              <span class="leg-item x">X</span>
+              <span class="leg-item y">Y</span>
+              <span class="leg-item z">Z</span>
+              <span class="leg-item abs">|A|</span>
+            </div>
+          </div>
+          <div class="chart-canvas-wrap">
+            <LiveChart points={accelBuf} showAbs={true} dark={darkMode} maxPoints={100} label="Accelerometer XYZ chart" />
+          </div>
+        </div>
+
+      </div>
+    </section>
+
     <!-- ── Log Tables ─────────────────────────── -->
-    <div class="log-row">
+    <div class="log-row reveal">
+
 
       <!-- Gyroscope log -->
       <section class="log-panel">
@@ -703,55 +778,48 @@
 
   .abs-value { font-size: 14px; font-weight: 600; }
 
-  /* ── Controls ────────────────────────────── */
+  /* ── Controls layout ─────────────────────── */
   .controls {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 12px;
     align-items: center;
   }
 
+  .btn-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* ── Primary pill button (Enable Sensors) ── */
   .btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 10px 20px;
-    border-radius: var(--radius-md);
+    gap: 7px;
+    padding: 10px 22px;
+    border-radius: var(--radius-pill);
     font-family: var(--font-family);
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    border: 2px solid transparent;
-    transition: all var(--transition-fast);
+    border: 1.5px solid transparent;
+    transition: all var(--transition-normal);
     white-space: nowrap;
+    position: relative;
+    overflow: hidden;
   }
 
-  .btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .btn--primary {
-    background: var(--color-brand-primary);
+    background: linear-gradient(135deg, var(--color-brand-primary), var(--color-brand-secondary));
     color: #fff;
+    box-shadow: 0 4px 18px rgba(0,160,175,0.35);
   }
-  .btn--primary:hover:not(:disabled) { background: var(--color-brand-secondary); }
-
-  .btn--record {
-    background: var(--color-brand-primary);
-    color: #fff;
-  }
-  .btn--record:hover:not(:disabled) { background: var(--color-brand-secondary); }
-
-  .btn--stop {
-    background: var(--color-danger);
-    color: #fff;
-    animation: record-glow 2s infinite;
-  }
-
-  @keyframes record-glow {
-    0%,100% { box-shadow: 0 0 0 0 rgba(220,53,69,0.0); }
-    50%      { box-shadow: 0 0 0 6px rgba(220,53,69,0.2); }
+  .btn--primary:hover:not(:disabled) {
+    box-shadow: 0 6px 24px rgba(0,160,175,0.50);
+    transform: translateY(-1px);
   }
 
   .btn--outline {
@@ -760,7 +828,8 @@
     color: var(--color-brand-primary);
   }
   .btn--outline:hover:not(:disabled) {
-    background: rgba(0,98,114,0.06);
+    background: rgba(0,160,175,0.07);
+    transform: translateY(-1px);
   }
 
   .btn--ghost {
@@ -769,6 +838,78 @@
     border-color: var(--color-border);
   }
   .btn--ghost:hover { background: var(--color-border-subtle); }
+
+  /* ── Hero Capture Button ─────────────────── */
+  .btn-capture {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 32px 14px 24px;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-family);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    overflow: hidden;
+    background: linear-gradient(135deg, #006272 0%, #00a0af 60%, #00c8d7 100%);
+    color: #fff;
+    box-shadow: 0 6px 28px rgba(0,160,175,0.40), 0 2px 8px rgba(0,0,0,0.15);
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .btn-capture:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 10px 36px rgba(0,160,175,0.52), 0 4px 12px rgba(0,0,0,0.20);
+  }
+
+  .btn-capture:active { animation: btn-tap 0.2s ease forwards; }
+
+  /* Recording state: red gradient */
+  .btn-capture.is-recording {
+    background: linear-gradient(135deg, #b71c1c 0%, #e53935 55%, #ff5252 100%);
+    box-shadow: 0 6px 28px rgba(229,57,53,0.45), 0 2px 8px rgba(0,0,0,0.20);
+  }
+  .btn-capture.is-recording:hover {
+    box-shadow: 0 10px 36px rgba(229,57,53,0.60), 0 4px 12px rgba(0,0,0,0.25);
+  }
+
+  /* Animated pulse ring on record */
+  .btn-capture__ring {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 2px solid rgba(255,255,255,0.30);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .btn-capture.is-recording .btn-capture__ring {
+    animation: capture-ring 1.8s cubic-bezier(0.4,0,0.6,1) infinite;
+  }
+
+  @keyframes capture-ring {
+    0%   { opacity: 0.8; transform: scale(1);    }
+    100% { opacity: 0;   transform: scale(1.18); }
+  }
+
+  .btn-capture__icon {
+    font-size: 18px;
+    line-height: 1;
+    transition: transform var(--transition-normal);
+  }
+  .btn-capture.is-recording .btn-capture__icon { transform: scale(1.1); }
+
+  .btn-capture__label {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
 
   /* ── Banners ─────────────────────────────── */
   .error-banner,
@@ -790,6 +931,89 @@
     border: 1px solid rgba(0,160,175,0.25);
     color: var(--color-brand-primary);
   }
+
+  /* ── Live Charts ─────────────────────────── */
+  .charts-section { }
+
+  .chart-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  @media (max-width: 600px) {
+    .chart-row { grid-template-columns: 1fr; }
+  }
+
+  .chart-card {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--color-border-subtle);
+    overflow: hidden;
+    transition: box-shadow var(--transition-normal), transform var(--transition-normal);
+  }
+
+  .chart-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .chart-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px 8px;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .chart-card__label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.02em;
+  }
+
+  .chart-card__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .gyro-dot  { background: var(--color-brand-accent); box-shadow: 0 0 6px var(--color-brand-accent); }
+  .accel-dot { background: var(--color-z); box-shadow: 0 0 6px var(--color-z); }
+
+  .chart-legend {
+    display: flex;
+    gap: 6px;
+  }
+
+  .leg-item {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: var(--radius-pill);
+    letter-spacing: 0.05em;
+  }
+  .leg-item.x   { background: rgba(255,82,82,0.14);  color: var(--color-x); }
+  .leg-item.y   { background: rgba(0,230,118,0.14);  color: var(--color-y); }
+  .leg-item.z   { background: rgba(68,138,255,0.14); color: var(--color-z); }
+  .leg-item.abs { background: rgba(255,171,64,0.14); color: var(--color-abs); }
+
+  .chart-canvas-wrap {
+    height: 180px;
+    padding: 6px 6px 4px;
+  }
+
+
+  @media (max-width: 600px) {
+    .chart-canvas-wrap { height: 160px; }
+  }
+
+
 
   /* ── Log Row ─────────────────────────────── */
   .log-row {

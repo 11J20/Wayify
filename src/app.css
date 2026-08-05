@@ -4,25 +4,25 @@
 
 /* ── Design Tokens – Light ───────────────────── */
 :root {
-  /* Brand palette – Merck-style teal/navy */
+  /* Brand palette */
   --color-brand-primary:   #006272;
   --color-brand-secondary: #00a0af;
   --color-brand-accent:    #00c8d7;
   --color-brand-dark:      #003d4d;
 
   /* Surface */
-  --color-bg:              #f0f4f7;
-  --color-surface:         #ffffff;
-  --color-border:          #d0dde5;
-  --color-border-subtle:   #e8eef3;
+  --color-bg:            #f0f4f7;
+  --color-surface:       #ffffff;
+  --color-border:        #d0dde5;
+  --color-border-subtle: #e8eef3;
 
   /* Text */
-  --color-text-primary:    #1a2e3a;
-  --color-text-secondary:  #4a6278;
-  --color-text-muted:      #7a94a5;
-  --color-text-on-dark:    #ffffff;
+  --color-text-primary:   #1a2e3a;
+  --color-text-secondary: #4a6278;
+  --color-text-muted:     #7a94a5;
+  --color-text-on-dark:   #ffffff;
 
-  /* Data channel colors */
+  /* Data channels */
   --color-x:   #e63559;
   --color-y:   #00a878;
   --color-z:   #3a7bd5;
@@ -30,20 +30,19 @@
 
   /* Status */
   --color-success: #28a745;
-  --color-warning: #ffc107;
   --color-danger:  #dc3545;
   --color-live:    #00c853;
 
   /* Elevation */
-  --shadow-sm:  0 1px 3px rgba(0,62,77,0.08), 0 1px 2px rgba(0,62,77,0.04);
-  --shadow-md:  0 4px 12px rgba(0,62,77,0.10), 0 2px 4px rgba(0,62,77,0.06);
-  --shadow-lg:  0 10px 30px rgba(0,62,77,0.14), 0 4px 8px rgba(0,62,77,0.08);
+  --shadow-sm: 0 1px 3px rgba(0,62,77,0.08), 0 1px 2px rgba(0,62,77,0.04);
+  --shadow-md: 0 4px 12px rgba(0,62,77,0.10), 0 2px 4px rgba(0,62,77,0.06);
+  --shadow-lg: 0 10px 30px rgba(0,62,77,0.14), 0 4px 8px rgba(0,62,77,0.08);
 
   /* Radii */
-  --radius-sm:  4px;
-  --radius-md:  8px;
-  --radius-lg:  12px;
-  --radius-xl:  16px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
 
   /* Typography */
   --font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -51,36 +50,43 @@
 
   /* Transitions */
   --transition-fast:   0.15s ease;
-  --transition-normal: 0.25s ease;
-  --transition-slow:   0.4s ease;
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow:   0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ── Design Tokens – Dark (class-based, no media-query flash) ──── */
+/* ── Design Tokens – AMOLED Dark ─────────────── */
 .dark {
-  --color-brand-primary:   #00c8d7;
-  --color-brand-secondary: #00a0af;
-  --color-brand-accent:    #00e5f5;
-  --color-brand-dark:      #001e26;
+  /* AMOLED: pure black backgrounds, vivid neon accents */
+  --color-brand-primary:   #00e5f5;
+  --color-brand-secondary: #00b8d4;
+  --color-brand-accent:    #18ffff;
+  --color-brand-dark:      #000000;
 
-  --color-bg:              #0d1a20;
-  --color-surface:         #152530;
-  --color-border:          #1e3340;
-  --color-border-subtle:   #172c38;
+  /* Pure black surfaces */
+  --color-bg:            #000000;
+  --color-surface:       #0a0a0a;
+  --color-border:        #1c1c1c;
+  --color-border-subtle: #111111;
 
-  --color-text-primary:    #e2edf3;
-  --color-text-secondary:  #8ab3c5;
-  --color-text-muted:      #4e7a90;
-  --color-text-on-dark:    #ffffff;
+  /* Text */
+  --color-text-primary:   #f5f5f5;
+  --color-text-secondary: #9e9e9e;
+  --color-text-muted:     #616161;
+  --color-text-on-dark:   #ffffff;
 
-  /* Keep channel colours vivid but slightly lighter on dark */
-  --color-x:   #ff5c7a;
-  --color-y:   #1fd19e;
-  --color-z:   #5b96f5;
-  --color-abs: #ffc147;
+  /* Vivid AMOLED channel colours */
+  --color-x:   #ff5252;
+  --color-y:   #00e676;
+  --color-z:   #448aff;
+  --color-abs: #ffab40;
 
-  --shadow-sm:  0 1px 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.25);
-  --shadow-md:  0 4px 12px rgba(0,0,0,0.40), 0 2px 4px rgba(0,0,0,0.30);
-  --shadow-lg:  0 10px 30px rgba(0,0,0,0.50), 0 4px 8px rgba(0,0,0,0.35);
+  --color-danger: #ff1744;
+  --color-live:   #00e676;
+
+  /* Deeper shadows on AMOLED */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.5);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.7), 0 2px 6px rgba(0,0,0,0.5);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.85), 0 4px 12px rgba(0,0,0,0.6);
 }
 
 /* ── Reset ───────────────────────────────────── */
@@ -94,13 +100,10 @@ html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  transition: background var(--transition-slow), color var(--transition-slow);
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  min-height: 100dvh;
-}
+body { margin: 0; padding: 0; min-height: 100dvh; }
 
 #app {
   min-height: 100dvh;
@@ -108,9 +111,56 @@ body {
   flex-direction: column;
 }
 
-h1, h2, h3, h4 { margin: 0; font-weight: 600; line-height: 1.25; color: var(--color-text-primary); }
+h1, h2, h3, h4 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-text-primary);
+}
 p { margin: 0; }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--color-border-subtle); }
-::-webkit-scrollbar-thumb { background: var(--color-brand-secondary); border-radius: 3px; }
+/* ── Scrollbar ───────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-brand-secondary); }
+
+/* ── Scroll reveal ───────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Ripple wave (injected by JS) ────────────── */
+@keyframes ripple-spread {
+  from { transform: translate(-50%, -50%) scale(0); opacity: 0.5; }
+  to   { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
+}
+
+.ripple-wave {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  width: 180px;
+  height: 180px;
+  background: rgba(255,255,255,0.22);
+  animation: ripple-spread 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ── Click scale feedback ────────────────────── */
+@keyframes btn-tap {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+/* ── Sensor card entrance ────────────────────── */
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
