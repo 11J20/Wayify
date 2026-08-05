@@ -2,7 +2,7 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-/* ── Design Tokens ───────────────────────────── */
+/* ── Design Tokens – Light ───────────────────── */
 :root {
   /* Brand palette – Merck-style teal/navy */
   --color-brand-primary:   #006272;
@@ -13,7 +13,6 @@
   /* Surface */
   --color-bg:              #f0f4f7;
   --color-surface:         #ffffff;
-  --color-surface-raised:  #ffffff;
   --color-border:          #d0dde5;
   --color-border-subtle:   #e8eef3;
 
@@ -54,6 +53,34 @@
   --transition-fast:   0.15s ease;
   --transition-normal: 0.25s ease;
   --transition-slow:   0.4s ease;
+}
+
+/* ── Design Tokens – Dark (class-based, no media-query flash) ──── */
+.dark {
+  --color-brand-primary:   #00c8d7;
+  --color-brand-secondary: #00a0af;
+  --color-brand-accent:    #00e5f5;
+  --color-brand-dark:      #001e26;
+
+  --color-bg:              #0d1a20;
+  --color-surface:         #152530;
+  --color-border:          #1e3340;
+  --color-border-subtle:   #172c38;
+
+  --color-text-primary:    #e2edf3;
+  --color-text-secondary:  #8ab3c5;
+  --color-text-muted:      #4e7a90;
+  --color-text-on-dark:    #ffffff;
+
+  /* Keep channel colours vivid but slightly lighter on dark */
+  --color-x:   #ff5c7a;
+  --color-y:   #1fd19e;
+  --color-z:   #5b96f5;
+  --color-abs: #ffc147;
+
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.25);
+  --shadow-md:  0 4px 12px rgba(0,0,0,0.40), 0 2px 4px rgba(0,0,0,0.30);
+  --shadow-lg:  0 10px 30px rgba(0,0,0,0.50), 0 4px 8px rgba(0,0,0,0.35);
 }
 
 /* ── Reset ───────────────────────────────────── */

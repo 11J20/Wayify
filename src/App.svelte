@@ -18,24 +18,38 @@
   let accelLive = $state({ x: 0, y: 0, z: 0, abs: 0 });
   let accelSource = $state<'gravity' | 'linear' | 'none'>('none');
 
-  let isCapturing  = $state(false);
-  let permGranted  = $state(false);
-  let permPending  = $state(false);
-  let errorMsg     = $state('');
+  let isCapturing    = $state(false);
+  let permGranted    = $state(false);
+  let permPending    = $state(false);
+  let errorMsg       = $state('');
   let sensorSupported = $state(true);
+
+  // Dark mode – respects OS preference, persists manual override
+  let darkMode = $state(
+    localStorage.getItem('wayify-dark') !== null
+      ? localStorage.getItem('wayify-dark') === 'true'
+      : window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
+
+  function toggleDark() {
+    darkMode = !darkMode;
+    localStorage.setItem('wayify-dark', String(darkMode));
+  }
 
   let gyroRef:  HTMLDivElement;
   let accelRef: HTMLDivElement;
 
   // ── Helpers ───────────────────────────────────────────────────────
   function formatTs(): string {
-    const now = new Date();
+    const now  = new Date();
     const dd   = String(now.getDate()).padStart(2, '0');
     const mm   = String(now.getMonth() + 1).padStart(2, '0');
     const yyyy = now.getFullYear();
     const hh   = String(now.getHours()).padStart(2, '0');
     const min  = String(now.getMinutes()).padStart(2, '0');
-    return `${dd}${mm}${yyyy} - ${hh}:${min}`;
+    const ss   = String(now.getSeconds()).padStart(2, '0');
+    const ms   = String(now.getMilliseconds()).padStart(3, '0');
+    return `${dd}${mm}${yyyy} - ${hh}:${min}:${ss}:${ms}`;
   }
 
   function fix(n: number) { return n.toFixed(4); }
@@ -201,7 +215,7 @@
 
 <!-- ── Markup ──────────────────────────────────────────────────────── -->
 
-<div class="shell">
+<div class="shell" class:dark={darkMode}>
 
   <!-- Top Bar -->
   <header class="topbar">
@@ -212,9 +226,35 @@
       </svg>
       <span class="topbar__name">Wayify</span>
     </div>
-    <div class="topbar__status">
-      <span class="status-dot" class:active={isCapturing}></span>
-      <span class="status-label">{isCapturing ? 'LIVE' : 'IDLE'}</span>
+    <div class="topbar__right">
+      <!-- Dark mode toggle -->
+      <button
+        id="btn-dark"
+        class="dark-toggle"
+        onclick={toggleDark}
+        aria-label="Toggle dark mode"
+        title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {#if darkMode}
+          <!-- Sun icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+        {:else}
+          <!-- Moon icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        {/if}
+      </button>
+      <div class="topbar__status">
+        <span class="status-dot" class:active={isCapturing}></span>
+        <span class="status-label">{isCapturing ? 'LIVE' : 'IDLE'}</span>
+      </div>
     </div>
   </header>
 
@@ -412,7 +452,7 @@
   <footer class="footer">
     <span>Wayify Sensor Suite</span>
     <span class="footer__sep">·</span>
-    <span>Timestamp format: DDMMYYYY – HH:MM (24h)</span>
+    <span>Timestamp: DDMMYYYY – HH:MM:SS:mmm (24h)</span>
   </footer>
 
 </div><!-- /shell -->
@@ -468,6 +508,43 @@
     align-items: center;
     gap: 7px;
   }
+
+  .topbar__right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* ── Dark mode toggle ────────────────────── */
+  .dark-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.85);
+    cursor: pointer;
+    transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .dark-toggle svg {
+    width: 16px;
+    height: 16px;
+    transition: transform var(--transition-normal);
+  }
+
+  .dark-toggle:hover {
+    background: rgba(255,255,255,0.20);
+    box-shadow: 0 0 0 3px rgba(0,200,215,0.25);
+    transform: rotate(15deg);
+  }
+
+  .dark-toggle:active { transform: scale(0.92); }
 
   .status-dot {
     width: 9px;
@@ -844,4 +921,63 @@
   }
 
   .footer__sep { opacity: 0.4; }
+
+  /* ── Dark mode overrides ─────────────────── */
+
+  /* Table row hover */
+  :global(.dark) .log-table tbody tr:hover td {
+    background: rgba(0,200,215,0.04);
+  }
+
+  /* Axis item background */
+  :global(.dark) .axis-item {
+    background: var(--color-border-subtle);
+    border-color: var(--color-border);
+  }
+
+  /* Log panel header gradient */
+  :global(.dark) .log-panel__head {
+    background: linear-gradient(to right, rgba(0,200,215,0.06), transparent);
+  }
+
+  /* Log panel count badge */
+  :global(.dark) .log-panel__count {
+    background: var(--color-border);
+  }
+
+  /* Sensor card top border */
+  :global(.dark) .sensor-card {
+    border-top-color: var(--color-brand-secondary);
+  }
+
+  /* Ghost button */
+  :global(.dark) .btn--ghost:hover {
+    background: var(--color-border);
+  }
+
+  /* Outline button */
+  :global(.dark) .btn--outline {
+    border-color: var(--color-brand-accent);
+    color: var(--color-brand-accent);
+  }
+  :global(.dark) .btn--outline:hover:not(:disabled) {
+    background: rgba(0,200,215,0.08);
+  }
+
+  /* Error / info banners */
+  :global(.dark) .error-banner {
+    background: rgba(220,53,69,0.12);
+    border-color: rgba(220,53,69,0.35);
+  }
+  :global(.dark) .info-banner {
+    background: rgba(0,200,215,0.08);
+    border-color: rgba(0,200,215,0.25);
+    color: var(--color-brand-accent);
+  }
+
+  /* Log table sticky header */
+  :global(.dark) .log-table thead th {
+    background: var(--color-surface);
+  }
+
 </style>
