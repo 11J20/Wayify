@@ -92,7 +92,8 @@
   function tick(now: number) {
     rafId = requestAnimationFrame(tick);
 
-    if (now - lastFrame < 33) return; // Cap at 30fps for graphs/live-readouts
+    // Cap at ~10 FPS (100ms) to make live graphs and numbers comfortable for the human eye
+    if (now - lastFrame < 100) return; 
     lastFrame = now;
 
     // 1. Sync live readouts
