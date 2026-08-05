@@ -13,17 +13,32 @@
     abs?: number;
   }
 
-  // ── State ─────────────────────────────────────────────────────────
+  // ── Raw High-Frequency Memory Buffers ─────────────────────────────
+  // These are plain JS objects/arrays. They prevent Svelte reactivity and GC 
+  // pressure when updating 100+ times per second.
+  const fullGyroLog:  SensorEntry[] = [];
+  const fullAccelLog: SensorEntry[] = [];
+  const rawGyroBuf:   ChartPoint[] = [];
+  const rawAccelBuf:  ChartPoint[] = [];
+
+  let rawGyroLive = { x: 0, y: 0, z: null as number | null };
+  let rawAccelLive = { x: 0, y: 0, z: 0, abs: 0 };
+  let rawAccelSource: 'gravity' | 'linear' | 'none' = 'none';
+
+  // ── Svelte State (UI synced via RAF) ──────────────────────────────
   let currentPage = $state<'live' | 'vectroscope'>('live');
 
-  let gyroLog:  SensorEntry[] = $state([]);
-  let accelLog: SensorEntry[] = $state([]);
+  // We only render the latest 200 items in the DOM to prevent browser hang
+  let gyroLogPreview:  SensorEntry[] = $state([]);
+  let accelLogPreview: SensorEntry[] = $state([]);
+  let gyroLogCount  = $state(0);
+  let accelLogCount = $state(0);
 
-  // Always-live chart buffers (not capture-gated, max 120 points)
+  // Always-live chart buffers (synced via RAF)
   let gyroBuf:  ChartPoint[] = $state([]);
   let accelBuf: ChartPoint[] = $state([]);
 
-  let gyroLive  = $state<{ x: number; y: number; z: number | null }>({ x: 0, y: 0, z: null });
+  let gyroLive  = $state({ x: 0, y: 0, z: null as number | null });
   let accelLive = $state({ x: 0, y: 0, z: 0, abs: 0 });
   let accelSource = $state<'gravity' | 'linear' | 'none'>('none');
 
@@ -67,50 +82,84 @@
     if (el) el.scrollTop = el.scrollHeight;
   }
 
-  // ── Sensor handlers ───────────────────────────────────────────────
-  function onGyro(e: DeviceOrientationEvent) {
-    // beta=X front/back, gamma=Y left/right, alpha=Z compass (null if no mag)
-    gyroLive = {
-      x: e.beta  ?? 0,
-      y: e.gamma ?? 0,
-      z: e.alpha,
-    };
-    // Always update live chart buffer
-    gyroBuf = [...gyroBuf, { x: e.beta ?? 0, y: e.gamma ?? 0, z: e.alpha }];
-    if (gyroBuf.length > 120) gyroBuf = gyroBuf.slice(-120);
+  // ── RAF Throttle Loop ─────────────────────────────────────────────
+  let rafId: number;
+  let lastScrollCheck = 0;
+
+  function tick() {
+    // 1. Sync live readouts
+    gyroLive.x = rawGyroLive.x;
+    gyroLive.y = rawGyroLive.y;
+    gyroLive.z = rawGyroLive.z;
+    
+    accelLive.x = rawAccelLive.x;
+    accelLive.y = rawAccelLive.y;
+    accelLive.z = rawAccelLive.z;
+    accelLive.abs = rawAccelLive.abs;
+    accelSource = rawAccelSource;
+
+    // 2. Sync buffers (slice creates a fresh array reference for Svelte)
+    gyroBuf = rawGyroBuf.slice();
+    accelBuf = rawAccelBuf.slice();
+
+    // 3. Sync UI log previews & counts
+    gyroLogCount = fullGyroLog.length;
+    accelLogCount = fullAccelLog.length;
 
     if (isCapturing) {
-      gyroLog = [...gyroLog, {
-        ts: formatTs(),
-        x:  e.beta  ?? 0,
-        y:  e.gamma ?? 0,
-        z:  e.alpha,
-      }];
-      if (gyroLog.length > 200) gyroLog = gyroLog.slice(-200);
-      scrollBottom(gyroRef);
+      gyroLogPreview = fullGyroLog.slice(-200);
+      accelLogPreview = fullAccelLog.slice(-200);
+      
+      const now = performance.now();
+      if (now - lastScrollCheck > 250) { // Throttle DOM scroll
+        scrollBottom(gyroRef);
+        scrollBottom(accelRef);
+        lastScrollCheck = now;
+      }
+    }
+
+    rafId = requestAnimationFrame(tick);
+  }
+
+  // ── Sensor handlers (Raw Array Mutations) ─────────────────────────
+  function onGyro(e: DeviceOrientationEvent) {
+    const x = e.beta ?? 0;
+    const y = e.gamma ?? 0;
+    const z = e.alpha;
+
+    rawGyroLive.x = x;
+    rawGyroLive.y = y;
+    rawGyroLive.z = z;
+
+    rawGyroBuf.push({ x, y, z });
+    if (rawGyroBuf.length > 120) rawGyroBuf.shift();
+
+    if (isCapturing) {
+      fullGyroLog.push({ ts: formatTs(), x, y, z });
     }
   }
 
   function onAccel(e: DeviceMotionEvent) {
     const aG  = e.accelerationIncludingGravity;
     const aL  = e.acceleration;
-    const useLinear = aL !== null && (aL?.x !== null || aL?.y !== null || aL?.z !== null);
+    const useLinear = aL !== null && (aL.x !== null || aL.y !== null || aL.z !== null);
     const src = useLinear ? aL : aG;
     const x   = src?.x ?? 0;
     const y   = src?.y ?? 0;
     const z   = src?.z ?? 0;
     const abs = Math.sqrt(x*x + y*y + z*z);
 
-    accelSource = useLinear ? 'linear' : (aG ? 'gravity' : 'none');
-    accelLive   = { x, y, z, abs };
-    // Always update live chart buffer
-    accelBuf = [...accelBuf, { x, y, z, abs }];
-    if (accelBuf.length > 120) accelBuf = accelBuf.slice(-120);
+    rawAccelSource = useLinear ? 'linear' : (aG ? 'gravity' : 'none');
+    rawAccelLive.x = x;
+    rawAccelLive.y = y;
+    rawAccelLive.z = z;
+    rawAccelLive.abs = abs;
+
+    rawAccelBuf.push({ x, y, z, abs });
+    if (rawAccelBuf.length > 120) rawAccelBuf.shift();
 
     if (isCapturing) {
-      accelLog = [...accelLog, { ts: formatTs(), x, y, z, abs }];
-      if (accelLog.length > 200) accelLog = accelLog.slice(-200);
-      scrollBottom(accelRef);
+      fullAccelLog.push({ ts: formatTs(), x, y, z, abs });
     }
   }
 
@@ -153,8 +202,12 @@
   }
 
   function clearAll() {
-    gyroLog  = [];
-    accelLog = [];
+    fullGyroLog.length = 0;
+    fullAccelLog.length = 0;
+    gyroLogCount = 0;
+    accelLogCount = 0;
+    gyroLogPreview = [];
+    accelLogPreview = [];
   }
 
   // ── Ripple effect ───────────────────────────────────────────────
@@ -176,13 +229,13 @@
     // Gyroscope section
     // Z (alpha) may be null when device has no magnetometer — shown as blank
     const gyroHeader = 'Section,Timestamp,Gyro_X_deg,Gyro_Y_deg,Gyro_Z_deg';
-    const gyroRows   = gyroLog.map(
+    const gyroRows   = fullGyroLog.map(
       r => `GYROSCOPE,${r.ts},${r.x.toFixed(4)},${r.y.toFixed(4)},${r.z !== null ? r.z.toFixed(4) : ''}`
     );
 
     // Accelerometer section
     const accelHeader = 'Section,Timestamp,Accel_X_ms2,Accel_Y_ms2,Accel_Z_ms2,Abs_ms2';
-    const accelRows   = accelLog.map(
+    const accelRows   = fullAccelLog.map(
       r => `ACCELEROMETER,${r.ts},${r.x.toFixed(4)},${r.y.toFixed(4)},${r.z.toFixed(4)},${(r.abs ?? 0).toFixed(4)}`
     );
 
@@ -210,6 +263,8 @@
 
   // ── Lifecycle ─────────────────────────────────────────────────────
   onMount(() => {
+    rafId = requestAnimationFrame(tick);
+
     if (typeof DeviceOrientationEvent === 'undefined' &&
         typeof DeviceMotionEvent === 'undefined') {
       sensorSupported = false;
@@ -229,6 +284,7 @@
   });
 
   onDestroy(() => {
+    cancelAnimationFrame(rafId);
     window.removeEventListener('deviceorientation', onGyro, true);
     window.removeEventListener('devicemotion', onAccel, true);
   });
@@ -415,7 +471,7 @@
 
         <div class="btn-group">
           <button id="btn-export" class="btn btn--outline" onclick={(e) => { ripple(e); exportCSV(); }}
-            disabled={gyroLog.length === 0 && accelLog.length === 0}>
+            disabled={gyroLogCount === 0 && accelLogCount === 0}>
             <span>⬇</span> Export CSV
           </button>
           <button id="btn-clear" class="btn btn--ghost" onclick={(e) => { ripple(e); clearAll(); }}>
@@ -488,13 +544,13 @@
       <section class="log-panel" use:reveal>
         <div class="log-panel__head">
           <h3 class="log-panel__title">Gyroscope Log</h3>
-          <span class="log-panel__count">{gyroLog.length} entries</span>
+          <span class="log-panel__count">{gyroLogCount} entries</span>
         </div>
-        <div class="log-table-wrap" bind:this={gyroRef}>
-          {#if gyroLog.length === 0}
-            <div class="log-empty">No data yet. Start capturing to record.</div>
+        <div class="log-panel__body" bind:this={gyroRef}>
+          {#if gyroLogPreview.length === 0}
+            <div class="log-panel__empty">No data captured. Press Start.</div>
           {:else}
-            <table class="log-table">
+            <table>
               <thead>
                 <tr>
                   <th>Timestamp</th>
@@ -504,7 +560,7 @@
                 </tr>
               </thead>
               <tbody>
-                {#each gyroLog as row, i (i)}
+                {#each gyroLogPreview as row, i (i)}
                   <tr>
                     <td class="ts-cell">{row.ts}</td>
                     <td class="col-x">{fix(row.x)}</td>
@@ -522,13 +578,13 @@
       <section class="log-panel" use:reveal>
         <div class="log-panel__head">
           <h3 class="log-panel__title">Accelerometer Log</h3>
-          <span class="log-panel__count">{accelLog.length} entries</span>
+          <span class="log-panel__count">{accelLogCount} entries</span>
         </div>
-        <div class="log-table-wrap" bind:this={accelRef}>
-          {#if accelLog.length === 0}
-            <div class="log-empty">No data yet. Start capturing to record.</div>
+        <div class="log-panel__body" bind:this={accelRef}>
+          {#if accelLogPreview.length === 0}
+            <div class="log-panel__empty">No data captured. Press Start.</div>
           {:else}
-            <table class="log-table">
+            <table>
               <thead>
                 <tr>
                   <th>Timestamp</th>
@@ -539,7 +595,7 @@
                 </tr>
               </thead>
               <tbody>
-                {#each accelLog as row, i (i)}
+                {#each accelLogPreview as row, i (i)}
                   <tr>
                     <td class="ts-cell">{row.ts}</td>
                     <td class="col-x">{fix(row.x)}</td>
